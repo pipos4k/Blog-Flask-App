@@ -1,13 +1,11 @@
-from flask import Flask, render_template, redirect, url_for
-from flask_wtf import FlaskForm
+from flask import Flask, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_bootstrap import Bootstrap5
-from flask_ckeditor import CKEditor, CKEditorField
+from flask_ckeditor import CKEditor
 from datetime import date
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Text
-from wtforms import StringField, SubmitField
-from wtforms.validators import DataRequired, URL
+
 
 # Create Flask app
 app = Flask(__name__) 
@@ -19,7 +17,7 @@ app.config['CKEDITOR_CDN'] = None
 Bootstrap5(app)
 ckeditor = CKEditor(app=app)
 
-# * Create database
+# * Create database for posts
 class Base(DeclarativeBase): 
     pass
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///posts.db"
@@ -37,27 +35,26 @@ class Posts(db.Model):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(String(250), nullable=True)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
-
-# Create a WTForm 
-class CreatePostForm(FlaskForm):
-    title = StringField("Blog Post Title", validators=[DataRequired()])
-    subtitle = StringField("Subtitle", validators=[DataRequired()])
-    author = StringField("Author", validators=[DataRequired()])
-    img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
-    body = CKEditorField("Blog Content", validators=[DataRequired()])
-    submit = SubmitField("Submit Post")
 # * end of db
 
 # * Create USER
-from forms import RegisterForm
-class User(db.Model): # UserMixin
+from forms import RegisterForm, Login
+from flask_login import UserMixin, LoginManager, login_user
+class User(UserMixin, db.Model):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(100), nullable=False)
     password: Mapped[str] = mapped_column(String(100), nullable=False)
-    pass
 
+# Set up Login
+login_manager = LoginManager()
+login_manager.init_app(app=app) # Connect with app
+
+# Load user by ID
+@login_manager.user_loader
+def load_user(user_id):
+    return db.get_or_404(User, user_id) # Call out user or return 404
 # * end of create user
 
 # Define the route
@@ -68,6 +65,7 @@ def home_page():
     posts = result.scalars().all()
     return render_template("index.html", all_posts=posts)
 
+# * Handle POSTS, GET, DELETE, EDIT
 #Define a page for individual post by ID  
 @app.route("/post/<int:index>")
 def show_post(index):
@@ -75,6 +73,7 @@ def show_post(index):
     return render_template("post.html", post=result)
 
 # Create a new post page
+from forms import CreatePostForm
 @app.route("/new-post", methods=["GET", "POST"])
 def add_post():
     form = CreatePostForm()
@@ -121,6 +120,57 @@ def delete_post(index):
     db.session.delete(result)
     db.session.commit()
     return redirect(url_for("home_page"))
+# * end of handle posts
+
+# * Handle users
+from werkzeug.security import generate_password_hash, check_password_hash
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        # Check the username if already exists
+        result= db.session.execute(db.select(User).where(User.email == form.email.data))
+        user= result.scalar()
+        if user: 
+            # User already exists
+            flash("Username already exists, try to login")
+            return redirect(url_for("login"))
+
+        hash_and_salted_password = generate_password_hash(
+            form.password.data,
+            method="scrypt",
+            salt_length=8
+        )
+        new_user = User(
+            username= form.username.data,
+            email= form.email.data,
+            password= hash_and_salted_password
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Authenticate the user with FlaskLogik
+        login(new_user)
+        return redirect(url_for("home_page"))
+    return render_template("register.html", form=form)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    form = Login()
+    if form.validate_on_submit():
+        username= form.username.data
+        password= form.password.data
+        result= db.session.execute(db.select(User).where(User.username == username))
+        user= result.scalar() # Username is unique so will have one result only.
+
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for("home_page"))
+        else:
+            print("ERROR")
+    return render_template("login.html", form=form)
+# * end of handle users
 
 # Define the about page
 @app.route("/about")
