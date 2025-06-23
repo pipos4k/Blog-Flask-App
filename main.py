@@ -31,6 +31,21 @@ def admin(f):
     return decorated_function
 # * end of admin
 
+# * Create avatars
+# There should be an import statement up top
+from flask_gravatar import Gravatar
+
+# For adding profile images to the comment section
+gravatar = Gravatar(app,
+                    size=50,
+                    rating='g',
+                    default='retro',
+                    force_default=False,
+                    force_lower=False,
+                    use_ssl=False,
+                    base_url=None)
+
+
 # * Create database for posts
 class Base(DeclarativeBase): 
     pass
@@ -56,15 +71,21 @@ class Posts(db.Model):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     img_url: Mapped[str] = mapped_column(String(250), nullable=False)
 
+    # Add parent relationship with Comment
+    comments = relationship("Comment", back_populates="parent_post")
+
 # New table for comments
 class Comment(db.Model):
     __tablename__ = "comments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    text: Mapped[str] = mapped_column(Text, nullable=False)
-
     # Add child relationship with User class
     author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     comment_author = relationship("User", back_populates="comments")
+
+    # Add child relationshiop with Posts
+    post_id: Mapped[int] = mapped_column(Integer, ForeignKey("blog_post.id"))
+    parent_post = relationship("Posts", back_populates="comments")
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
 # * end of db
 
@@ -95,6 +116,14 @@ def load_user(user_id):
 # * end of create user
 
 
+# * Start the app
+# Define the route
+@app.route("/") 
+def home_page():
+    # Query the database for all the posts. Convert the data to a python list.
+    result = db.session.execute(db.select(Posts))
+    posts = result.scalars().all()
+    return render_template("index.html", all_posts=posts, current_user=current_user)
 
 # * Handle users
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -149,29 +178,34 @@ def login():
             return redirect(url_for("home_page"))
     return render_template("login.html", form=form, current_user=current_user)
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
     logout_user()
     return redirect(url_for('home_page'))
 
 # * end of handle users
 
-# * Start the app
-# Define the route
-@app.route("/") 
-def home_page():
-    # Query the database for all the posts. Convert the data to a python list.
-    result = db.session.execute(db.select(Posts))
-    posts = result.scalars().all()
-    return render_template("index.html", all_posts=posts, current_user=current_user)
-
 # * Handle POSTS, GET, DELETE, EDIT
 #Define a page for individual post by ID  
-@app.route("/post/<int:index>")
+@app.route("/post/<int:index>", methods=["GET", "POST"])
 def show_post(index):
     result = db.get_or_404(Posts, index)
     # Add comment form
     comment_form = Comments()
+
+    # Allow only logged in users
+    if comment_form.validate_on_submit():
+        if not current_user.is_authenticated:
+            flash("You need to login or register to comment.")
+            return redirect(url_for("login"))
+        
+        new_comment = Comment(
+            text= comment_form.comment_text.data,
+            comment_author=current_user,
+            parent_post=result
+        )
+        db.session.add(new_comment)
+        db.session.commit()
     return render_template("post.html", post=result, current_user=current_user, form=comment_form)
 
 # Create a new post page, ONLY ADMIN
@@ -225,8 +259,6 @@ def delete_post(index):
     db.session.commit()
     return redirect(url_for("home_page"))
 # * end of handle posts
-
-
 
 # Define the about page
 @app.route("/about")

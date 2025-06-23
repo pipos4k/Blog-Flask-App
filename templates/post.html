@@ -1,7 +1,10 @@
 {% from "bootstrap5/form.html" import render_form %}
 {% include "header.html" %}
+
   <!-- Page Header -->
-  <header class="masthead" style="background-image: url('{{post.img_url}}')">
+  <header class="masthead" style="background-image: url('{{ post.img_url }}')">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
     <div class="overlay"></div>
     <div class="container">
       <div class="row">
@@ -35,31 +38,33 @@
         </div>
         {% endif %}
         
-        <!--Comments Area -->
-        <!-- Load CKEditor -->
+        <!-- Comments Area -->
+        <!-- Load the CKEditor -->
         {{ ckeditor.load() }}
-        <!-- Configure it with the name of the form field from Comments -->
-        {{ ckeditor.config(name="comment_text") }}
-        <!-- Create the WTF form from Comments -->
+        <!-- Configure it with the name of the form field from CommentForm -->
+        {{ ckeditor.config(name='comment_text') }}
+        <!-- Create the wtf quick form from CommentForm -->
         {{ render_form(form, novalidate=True, button_map={"submit": "primary"}) }}
-        <div class="col-lg-8 col-md-10 mx-auto comment">
+        <div class="comment">
           <ul class="commentList">
+            <!-- Show all comments -->
+            {% for comment in post.comments: %}
             <li>
               <div class="commenterImage">
                 <img
-                  src="../static/assets/img/default-profile.jpg"
+                  src="{{ comment.comment_author.email | gravatar }}"
                 />
               </div>
               <div class="commentText">
-                <p>Some comment</p>
-                <span class="date sub-text">comment author name</span>
+                {{comment.text|safe}}
+                <span class="sub-text">{{comment.comment_author.name}}</span>
               </div>
             </li>
+            {% endfor %}
           </ul>
+
         </div>
       </div>
     </div>
   </div>
 </article>
-
-{% include "footer.html" %}
