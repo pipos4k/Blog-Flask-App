@@ -8,14 +8,17 @@ from sqlalchemy import Integer, String, Text, ForeignKey
 from forms import RegisterForm, Login, Comments, CreatePostForm
 from datetime import date
 from functools import wraps
+from dotenv import load_dotenv
+import os
 
 # Create Flask app
 app = Flask(__name__) 
-app.config['SECRET_KEY'] = "8BYkEfBA6O6donzWlSihBXox7C0sKR6b"
+load_dotenv()
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
 # Initialise the CKEditor so that you can use it in create_post.html
-app.config['CKEDITOR_SERVE_LOCAL'] = False
-app.config['CKEDITOR_PKG_TYPE'] = "standard" 
-app.config['CKEDITOR_CDN'] = None
+app.config["CKEDITOR_SERVE_LOCAL"] = False
+app.config["CKEDITOR_PKG_TYPE"] = "standard" 
+app.config["CKEDITOR_CDN"] = None
 Bootstrap5(app)
 ckeditor = CKEditor(app=app)
 
@@ -38,8 +41,8 @@ from flask_gravatar import Gravatar
 # For adding profile images to the comment section
 gravatar = Gravatar(app,
                     size=50,
-                    rating='g',
-                    default='retro',
+                    rating="g",
+                    default="retro",
                     force_default=False,
                     force_lower=False,
                     use_ssl=False,
@@ -90,7 +93,6 @@ class Comment(db.Model):
 # * end of db
 
 # * Create USER
-
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -274,4 +276,3 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-

@@ -1,10 +1,8 @@
 {% from "bootstrap5/form.html" import render_form %}
 {% include "header.html" %}
-
   <!-- Page Header -->
   <header class="masthead" style="background-image: url('{{ post.img_url }}')">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
     <div class="overlay"></div>
     <div class="container">
       <div class="row">
@@ -21,7 +19,6 @@
       </div>
     </div>
   </header>
-
   <!-- Post Content -->
   <article>
   <div class="container px-4 px-lg-5">
@@ -62,7 +59,6 @@
             </li>
             {% endfor %}
           </ul>
-
         </div>
       </div>
     </div>
