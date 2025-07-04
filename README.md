@@ -20,11 +20,7 @@ Users can read blog posts and write comments. Only admin users can add, edit, or
 
 - Python 3
 - Flask
-- Flask-Login
-- Flask-CKEditor
-- Flask-Gravatar
 - SQLAlchemy
-- SQLite
 - Bootstrap
 - WTForms
 - Werkzeug
