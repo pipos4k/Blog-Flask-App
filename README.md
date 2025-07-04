@@ -21,10 +21,8 @@ Users can read blog posts and write comments. Only admin users can add, edit, or
 - Python 3
 - Flask
 - SQLAlchemy
-- Bootstrap
 - WTForms
-- Werkzeug
-- Jinja2
+- Jinja2 / Bootstrap
 
 ---
 
