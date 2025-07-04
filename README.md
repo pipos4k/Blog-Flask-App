@@ -29,7 +29,6 @@ Users can read blog posts and write comments. Only admin users can add, edit, or
 - WTForms
 - Werkzeug
 - Jinja2
-- python-dotenv (for environment variables)
 
 ---
 
